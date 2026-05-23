@@ -163,18 +163,41 @@ export default async function({login, data, rest, q, account, imports}, {enabled
             }
             //Pushed commits
             case "PushEvent": {
-              let {size, ref, head, before} = payload
+              let {size, ref, head, before, commits: payloadCommits} = payload
               const [owner, repoName] = repo.split("/")
 
-              const res = await rest.repos.compareCommitsWithBasehead({owner, repo: repoName, basehead: `${before}...${head}`})
-              let {commits} = res.data
+              let commits = []
+              try {
+                const res = await rest.repos.compareCommitsWithBasehead({owner, repo: repoName, basehead: `${before}...${head}`})
+                commits = (res.data.commits ?? []).map(c => ({
+                  sha: c.sha,
+                  message: c.commit?.message ?? "",
+                  author: {
+                    email: c.commit?.author?.email ?? ""
+                  }
+                }))
+              }
+              catch (error) {
+                console.debug(`metrics/compute/${login}/plugins > activity > compareCommitsWithBasehead failed: ${error.message ?? error}`)
+                if (Array.isArray(payloadCommits)) {
+                  commits = payloadCommits.map(c => ({
+                    sha: c.sha ?? c.commit?.sha ?? "",
+                    message: c.message ?? c.commit?.message ?? "",
+                    author: {
+                      email: c.author?.email ?? c.commit?.author?.email ?? ""
+                    }
+                  }))
+                }
+              }
 
               commits = commits.filter(({author: {email}}) => imports.filters.text(email, ignored))
               if (!commits.length)
                 return null
-              if (commits.slice(-1).pop()?.commit.message.startsWith("Merge branch "))
+              const lastCommit = commits.slice(-1).pop()
+              const lastMessage = lastCommit?.message ?? lastCommit?.commit?.message ?? ""
+              if (lastMessage.startsWith("Merge branch "))
                 commits = commits.slice(-1)
-              return {type: customType, actor, timestamp, repo, size, branch: ref.match(/refs.heads.(?<branch>.*)/)?.groups?.branch ?? null, commits: commits.reverse().map(({sha, message}) => ({sha: sha.substring(0, 7), message}))}
+              return {type: customType, actor, timestamp, repo, size, branch: ref.match(/refs.heads.(?<branch>.*)/)?.groups?.branch ?? null, commits: commits.reverse().map(c => ({sha: (c.sha ?? "").substring(0, 7), message: c.message ?? c.commit?.message ?? ""}))}
             }
             //Released
             case "ReleaseEvent": {
