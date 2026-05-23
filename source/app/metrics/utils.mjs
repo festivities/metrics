@@ -375,14 +375,16 @@ export const filters = {
 
     //Normalize repository handle
     let repo, user
-    if (repository.nameWithOwner)
+    if (repository?.nameWithOwner)
       repository = repository.nameWithOwner
-    if ((repository.name) && (repository.owner?.login)) {
+    if ((repository?.name) && (repository?.owner?.login)) {
       user = repository.owner.login
       repo = repository.name
     }
+    if (typeof repository !== "string")
+      return true
     user = (user ?? repository.split("/")[0]).toLocaleLowerCase()
-    repo = (repo ?? repository.split("/")[1]).toLocaleLowerCase()
+    repo = (repo ?? repository.split("/")[1] ?? user).toLocaleLowerCase()
     const handle = `${user}/${repo}`
 
     let include = true
