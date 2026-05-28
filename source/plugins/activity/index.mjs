@@ -80,7 +80,8 @@ export default async function({login, data, rest, q, account, imports}, {enabled
             case "CommitCommentEvent": {
               if (!["created"].includes(payload.action))
                 return null
-              const {comment: {user: {login: user}, commit_id: sha, body: content}} = payload
+              const {comment: {user: cUser, commit_id: sha, body: content}} = payload
+              const user = cUser?.login ?? "ghost"
               if (!imports.filters.text(user, ignored))
                 return null
               return {type: customType, on: "commit", actor, timestamp, repo, content: await imports.markdown(content, {mode: markdown, codelines}), user, mobile: null, number: sha.substring(0, 7), title: ""}
@@ -109,7 +110,8 @@ export default async function({login, data, rest, q, account, imports}, {enabled
             case "IssueCommentEvent": {
               if (!["created"].includes(payload.action))
                 return null
-              const {issue: {user: {login: user}, title, number}, comment: {body: content, performed_via_github_app: mobile}} = payload
+              const {issue: {user: iUser, title, number}, comment: {body: content, performed_via_github_app: mobile}} = payload
+              const user = iUser?.login ?? "ghost"
               if (!imports.filters.text(user, ignored))
                 return null
               return {type: customType, on: "issue", actor, timestamp, repo, content: await imports.markdown(content, {mode: markdown, codelines}), user, mobile, number, title}
@@ -118,7 +120,8 @@ export default async function({login, data, rest, q, account, imports}, {enabled
             case "IssuesEvent": {
               if (!["opened", "closed", "reopened"].includes(payload.action))
                 return null
-              const {action, issue: {user: {login: user}, title, number, body: content}} = payload
+              const {action, issue: {user: iUser, title, number, body: content}} = payload
+              const user = iUser?.login ?? "ghost"
               if (!imports.filters.text(user, ignored))
                 return null
               return {type: customType, actor, timestamp, repo, action, user, number, title, content: await imports.markdown(content, {mode: markdown, codelines})}
@@ -127,7 +130,8 @@ export default async function({login, data, rest, q, account, imports}, {enabled
             case "MemberEvent": {
               if (!["added"].includes(payload.action))
                 return null
-              const {member: {login: user}} = payload
+              const {member: mUser} = payload
+              const user = mUser?.login ?? "ghost"
               if (!imports.filters.text(user, ignored))
                 return null
               return {type: customType, actor, timestamp, repo, user}
@@ -140,14 +144,16 @@ export default async function({login, data, rest, q, account, imports}, {enabled
             case "PullRequestEvent": {
               if (!["opened", "closed"].includes(payload.action))
                 return null
-              const {action, pull_request: {user: {login: user}, title, number, body: content, additions: added, deletions: deleted, changed_files: changed, merged}} = payload
+              const {action, pull_request: {user: prUser, title, number, body: content, additions: added, deletions: deleted, changed_files: changed, merged}} = payload
+              const user = prUser?.login ?? "ghost"
               if (!imports.filters.text(user, ignored))
                 return null
               return {type: customType, actor, timestamp, repo, action: (action === "closed") && (merged) ? "merged" : action, user, title, number, content: await imports.markdown(content, {mode: markdown, codelines}), lines: {added, deleted}, files: {changed}}
             }
             //Reviewed a pull request
             case "PullRequestReviewEvent": {
-              const {review: {state: review}, pull_request: {user: {login: user}, number, title}} = payload
+              const {review: {state: review}, pull_request: {user: prUser, number, title}} = payload
+              const user = prUser?.login ?? "ghost"
               if (!imports.filters.text(user, ignored))
                 return null
               return {type: customType, actor, timestamp, repo, review, user, number, title}
@@ -156,7 +162,8 @@ export default async function({login, data, rest, q, account, imports}, {enabled
             case "PullRequestReviewCommentEvent": {
               if (!["created"].includes(payload.action))
                 return null
-              const {pull_request: {user: {login: user}, title, number}, comment: {body: content, performed_via_github_app: mobile}} = payload
+              const {pull_request: {user: prUser, title, number}, comment: {body: content, performed_via_github_app: mobile}} = payload
+              const user = prUser?.login ?? "ghost"
               if (!imports.filters.text(user, ignored))
                 return null
               return {type: customType, on: "pr", actor, timestamp, repo, content: await imports.markdown(content, {mode: markdown, codelines}), user, mobile, number, title}
